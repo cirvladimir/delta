@@ -3,7 +3,7 @@
 #include "geometry.h"
 
 const int MICROSTEPS = 4;
-const int STEPS_PER_ROTATION = STEPS_PER_ROTATION;
+const int STEPS_PER_ROTATION = 200;
 
 Delta::Delta(PinConfiguration pin_configuration)
     : pin_configuration_(pin_configuration),
@@ -47,6 +47,9 @@ void Delta::home() {
     dangersoursMoveRight();
   }
   stepper_right_.setCurrentPosition(0);
+  while (stepper_right_.currentPosition() < MICROSTEPS * STEPS_PER_ROTATION) {
+    dangerousMoveLeft();
+  }
   is_homed_ = true;
 }
 
@@ -57,29 +60,34 @@ void Delta::goTo(float x, float y) {
   float left_mm_position = getLeftTargetPosition(x, y);
   float right_mm_position = getRightTargetPosition(x, y);
 
-  if ((left_mm_position < 0) || (left_mm_position > 355 - 95) ||
+  if (isnan(left_mm_position) || isnan(right_mm_position) ||
+      (left_mm_position < 0) || (left_mm_position > 355 - 95) ||
       (right_mm_position < 95) || (right_mm_position > 355) ||
       (right_mm_position - left_mm_position > 154) ||
       (right_mm_position - left_mm_position < 94)) {
-    Serial.println("Illegal go to.");
+    Serial.print("Illegal go to: ");
+    Serial.print(left_mm_position);
+    Serial.print(",");
+    Serial.print(right_mm_position);
+    Serial.println();
     return;
   }
 
-  Serial.print(left_mm_position);
-  Serial.print(" ");
-  Serial.print(mmPositionToLeftStepper(left_mm_position));
-  Serial.print(" ");
-  Serial.print(stepper_left_.currentPosition());
-  Serial.print(" ");
-  Serial.print(right_mm_position);
-  Serial.print(" ");
-  Serial.print(mmPositionToRightStepper(right_mm_position));
-  Serial.print(" ");
-  Serial.print(stepper_right_.currentPosition());
-  Serial.println();
+  // Serial.print(left_mm_position);
+  // Serial.print(" ");
+  // Serial.print(mmPositionToLeftStepper(left_mm_position));
+  // Serial.print(" ");
+  // Serial.print(stepper_left_.currentPosition());
+  // Serial.print(" ");
+  // Serial.print(right_mm_position);
+  // Serial.print(" ");
+  // Serial.print(mmPositionToRightStepper(right_mm_position));
+  // Serial.print(" ");
+  // Serial.print(stepper_right_.currentPosition());
+  // Serial.println();
 
-  // moveTo(mmPositionToLeftStepper(left_mm_position),
-  //        mmPositionToRightStepper(right_mm_position));
+  moveTo(mmPositionToLeftStepper(left_mm_position),
+         mmPositionToRightStepper(right_mm_position));
 }
 
 void Delta::moveTo(int left_position, int right_position) {
@@ -90,8 +98,8 @@ void Delta::moveTo(int left_position, int right_position) {
   }
 
   const int speed = MICROSTEPS * STEPS_PER_ROTATION;
-  bool left_speed_positive = left_position < stepper_left_.currentPosition();
-  bool right_speed_positive = right_position < stepper_right_.currentPosition();
+  bool left_speed_positive = stepper_left_.currentPosition() < left_position;
+  bool right_speed_positive = stepper_right_.currentPosition() < right_position;
   int left_speed = left_speed_positive ? speed : -speed;
   int right_speed = right_speed_positive ? speed : -speed;
 

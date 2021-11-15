@@ -19,12 +19,9 @@ void setup() {
   delta.home();
   Serial.println("done homing");
   delta.goTo(120.0, 5.0);
-  delta.goTo(10.0, 5.0);
+  Serial.println("Done goto 1");
+  delay(3000);
   delta.goTo(10.0, 0.0);
-  delta.goTo(320.0, 5.0);
-  delta.goTo(520.0, 5.0);
-  delta.goTo(320.0, -5.0);
-  delta.goTo(320.0, 235.0);
 }
 
 void loop() {
