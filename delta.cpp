@@ -4,6 +4,7 @@
 
 const int MICROSTEPS = 4;
 const int STEPS_PER_ROTATION = 200;
+const int SPEED = MICROSTEPS * STEPS_PER_ROTATION * 3;
 
 Delta::Delta(PinConfiguration pin_configuration)
     : pin_configuration_(pin_configuration),
@@ -19,21 +20,19 @@ void Delta::setup() {
   digitalWrite(pin_configuration_.magnet, LOW);
 
   stepper_left_.setMaxSpeed(MICROSTEPS * STEPS_PER_ROTATION * 4);
-  // stepper_left_.setAcceleration(MICROSTEPS * STEPS_PER_ROTATION * 4);
   stepper_right_.setMaxSpeed(MICROSTEPS * STEPS_PER_ROTATION * 4);
-  // stepper_right_.setAcceleration(MICROSTEPS * STEPS_PER_ROTATION * 4);
 }
 
 void Delta::dangersoursMoveRight() {
-  stepper_left_.setSpeed(MICROSTEPS * STEPS_PER_ROTATION * 1);
-  stepper_right_.setSpeed(-MICROSTEPS * STEPS_PER_ROTATION * 1);
+  stepper_left_.setSpeed(SPEED);
+  stepper_right_.setSpeed(-SPEED);
   stepper_left_.runSpeed();
   stepper_right_.runSpeed();
 }
 
 void Delta::dangerousMoveLeft() {
-  stepper_left_.setSpeed(-MICROSTEPS * STEPS_PER_ROTATION * 1);
-  stepper_right_.setSpeed(MICROSTEPS * STEPS_PER_ROTATION * 1);
+  stepper_left_.setSpeed(-SPEED);
+  stepper_right_.setSpeed(SPEED);
   stepper_left_.runSpeed();
   stepper_right_.runSpeed();
 }
@@ -97,11 +96,10 @@ void Delta::moveTo(int left_position, int right_position) {
     return;
   }
 
-  const int speed = MICROSTEPS * STEPS_PER_ROTATION;
   bool left_speed_positive = stepper_left_.currentPosition() < left_position;
   bool right_speed_positive = stepper_right_.currentPosition() < right_position;
-  int left_speed = left_speed_positive ? speed : -speed;
-  int right_speed = right_speed_positive ? speed : -speed;
+  int left_speed = left_speed_positive ? SPEED : -SPEED;
+  int right_speed = right_speed_positive ? SPEED : -SPEED;
 
   while (true) {
     if (!digitalRead(pin_configuration_.left_sensor) ||
@@ -149,3 +147,7 @@ int Delta::mmPositionToRightStepper(float mm_position) {
 int Delta::mmPositionToLeftStepper(float mm_position) {
   return mm_position / (2.0 * 20 / (MICROSTEPS * STEPS_PER_ROTATION));
 }
+
+void Delta::magnetOn() { digitalWrite(pin_configuration_.magnet, HIGH); }
+
+void Delta::magnetOff() { digitalWrite(pin_configuration_.magnet, LOW); }

@@ -15,13 +15,60 @@ Delta delta(pin_config);
 
 void setup() {
   Serial.begin(115200);
+
   delta.setup();
+
+  // delta.magnetOn();
+  // delay(2000);
+  // delta.magnetOff();
+  // return;
   delta.home();
   Serial.println("done homing");
-  delta.goTo(120.0, 5.0);
-  Serial.println("Done goto 1");
-  delay(3000);
+
   delta.goTo(10.0, 0.0);
+  delta.magnetOn();
+  delay(200);
+
+  delta.goTo(50.0, 10.0);
+  delta.goTo(220.0, 10.0);
+
+  delta.magnetOff();
+  delay(200);
+
+  delta.goTo(50.0, 10.0);
+  delta.goTo(50.0, 0.0);
+
+  delta.magnetOn();
+  delay(200);
+
+  delta.goTo(50.0, 10.0);
+  delta.goTo(220.0, 10.0);
+
+  delta.magnetOff();
+  delay(200);
+
+  delta.goTo(100.0, 10.0);
+  delta.goTo(100.0, 0.0);
+
+  delta.magnetOn();
+  delay(200);
+
+  delta.goTo(100.0, 10.0);
+  delta.goTo(220.0, 10.0);
+
+  delta.magnetOff();
+  delay(200);
+
+  delta.goTo(150.0, 10.0);
+  delta.goTo(150.0, 0.0);
+
+  delta.magnetOn();
+  delay(200);
+
+  delta.goTo(150.0, 10.0);
+  delta.goTo(220.0, 10.0);
+
+  delta.magnetOff();
 }
 
 void loop() {

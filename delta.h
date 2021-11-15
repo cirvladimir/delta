@@ -28,6 +28,8 @@ public:
   void goTo(float x, float y);
   float getRightSliderPosition();
   float getLeftSliderPosition();
+  void magnetOn();
+  void magnetOff();
 
 private:
   PinConfiguration pin_configuration_;
