@@ -4,7 +4,7 @@
 
 const int MICROSTEPS = 4;
 const int STEPS_PER_ROTATION = 200;
-const int SPEED = MICROSTEPS * STEPS_PER_ROTATION * 3;
+const int SPEED = MICROSTEPS * STEPS_PER_ROTATION * 4;
 
 Delta::Delta(PinConfiguration pin_configuration)
     : pin_configuration_(pin_configuration),
@@ -19,8 +19,8 @@ void Delta::setup() {
   pinMode(pin_configuration_.magnet, OUTPUT);
   digitalWrite(pin_configuration_.magnet, LOW);
 
-  stepper_left_.setMaxSpeed(MICROSTEPS * STEPS_PER_ROTATION * 4);
-  stepper_right_.setMaxSpeed(MICROSTEPS * STEPS_PER_ROTATION * 4);
+  stepper_left_.setMaxSpeed(SPEED);
+  stepper_right_.setMaxSpeed(SPEED);
 }
 
 void Delta::dangersoursMoveRight() {
