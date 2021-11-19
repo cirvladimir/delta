@@ -19,6 +19,11 @@ void Delta::setup() {
   pinMode(pin_configuration_.magnet, OUTPUT);
   digitalWrite(pin_configuration_.magnet, LOW);
 
+  pinMode(pin_configuration_.belt_forward, OUTPUT);
+  pinMode(pin_configuration_.belt_backward, OUTPUT);
+  digitalWrite(pin_configuration_.belt_forward, LOW);
+  digitalWrite(pin_configuration_.belt_backward, LOW);
+
   stepper_left_.setMaxSpeed(SPEED);
   stepper_right_.setMaxSpeed(SPEED);
 }
@@ -151,3 +156,18 @@ int Delta::mmPositionToLeftStepper(float mm_position) {
 void Delta::magnetOn() { digitalWrite(pin_configuration_.magnet, HIGH); }
 
 void Delta::magnetOff() { digitalWrite(pin_configuration_.magnet, LOW); }
+
+void Delta::beltForward() {
+  digitalWrite(pin_configuration_.belt_forward, HIGH);
+  digitalWrite(pin_configuration_.belt_backward, LOW);
+}
+
+void Delta::beltBackward() {
+  digitalWrite(pin_configuration_.belt_forward, LOW);
+  digitalWrite(pin_configuration_.belt_backward, HIGH);
+}
+
+void Delta::beltStop() {
+  digitalWrite(pin_configuration_.belt_forward, LOW);
+  digitalWrite(pin_configuration_.belt_backward, LOW);
+}

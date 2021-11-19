@@ -14,6 +14,9 @@ struct PinConfiguration {
   const int right_sensor;
 
   const int magnet;
+
+  const int belt_forward;
+  const int belt_backward;
 };
 
 class Delta {
@@ -30,6 +33,9 @@ public:
   float getLeftSliderPosition();
   void magnetOn();
   void magnetOff();
+  void beltForward();
+  void beltBackward();
+  void beltStop();
 
 private:
   PinConfiguration pin_configuration_;
