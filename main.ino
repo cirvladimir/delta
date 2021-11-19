@@ -46,6 +46,19 @@ void loop() {
       y = command.move_y ? command.y : y;
       delta.goTo(x, y);
     }
+    if (command.switch_belt) {
+      switch (command.belt_state) {
+      case Command::STOP:
+        delta.beltStop();
+        break;
+      case Command::FORWARD:
+        delta.beltForward();
+        break;
+      case Command::BACKWARD:
+        delta.beltBackward();
+        break;
+      }
+    }
     Serial.println("ready");
   }
 }

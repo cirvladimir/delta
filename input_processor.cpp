@@ -17,6 +17,10 @@ void Command::print() {
       Serial.println("Magnet off");
     }
   }
+  if (switch_belt) {
+    Serial.print("Belt - ");
+    Serial.println(belt_state);
+  }
 }
 
 InputProcessor::InputProcessor()
@@ -29,7 +33,8 @@ void InputProcessor::processByte(int input) {
   }
   if (input == '\r' || input == '\n' || input == ';') {
     finishNumberInput();
-    if (command_.move_x || command_.move_y || command_.switch_magnet) {
+    if (command_.move_x || command_.move_y || command_.switch_magnet ||
+        command_.switch_belt) {
       command_ready_ = true;
     }
     input_state_ = IDLE;
