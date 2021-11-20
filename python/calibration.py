@@ -70,6 +70,7 @@ def make_rotation_matrix(angle):
   s = math.sin(angle)
   return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]], np.float32)
 
+
 def get_aruco_corners(point_1, point_2):
   # Note, these values were taken from the doc from the calibration sheet.
   # Given point 1 and point 2, where are the corners?
@@ -124,22 +125,24 @@ def find_camera_transform_aruco(camera_matrix, distortion, image,
 # np.save("camera_matrix.npy", camera_matrix)
 # np.save("distortion.npy", distortion)
 
-(camera_matrix, distortion) = (np.load("camera_matrix.npy"), np.load("distortion.npy"))
+
+(camera_matrix, distortion) = (
+    np.load("camera_matrix.npy"), np.load("distortion.npy"))
 # print(camera_matrix)
 # print(distortion)
 
 
-# vid = cv2.VideoCapture(0)
+vid = cv2.VideoCapture(0)
 
-# vid.set(3, 1600)
-# vid.set(4, 1200)
+vid.set(3, 1600)
+vid.set(4, 1200)
 
-# _, frame = vid.read()
-# frame = cv2.undistort(frame, camera_matrix, distortion)
+_, frame = vid.read()
+frame = cv2.undistort(frame, camera_matrix, distortion)
 
-# cv2.imwrite(f"a.png", frame)
+cv2.imwrite(f"a.png", frame)
 
-# vid.release()
+vid.release()
 
 
 # Calibration coordinates: pt1: (x: 75.4, y: 254, z: 0) pt2: (x: 75.4, y: 254+(255.5-32), z: 0)
@@ -156,6 +159,7 @@ def find_camera_transform_aruco(camera_matrix, distortion, image,
 
 camera_rotation = cv2.Rodrigues(np.load("camera_rotation.npy"))[0]
 camera_translation = np.load("camera_translation.npy")
+
 
 def find_x_y(u, v, z, camera_matrix, rotation_matrix, translation_vector):
   """Finds world X,Y coordinates given world Z and picture u,v coordinates.
@@ -177,6 +181,7 @@ def find_x_y(u, v, z, camera_matrix, rotation_matrix, translation_vector):
   p = np.dot(inv_rotation_matrix, s *
              np.dot(inv_camera_matrix, uv) - translation_vector)
   return np.array([p[0], p[1]])
+
 
 print(find_x_y(1108, 873, 0, camera_matrix, camera_rotation, camera_translation))
 print(find_x_y(359, 874, 0, camera_matrix, camera_rotation, camera_translation))
