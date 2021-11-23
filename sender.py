@@ -19,7 +19,11 @@ def waitForReady():
 
 waitForReady()
 
-serialPort.write(bytes('X50 Y0\n', 'utf-8'))
+# serialPort.write(bytes('X50 Y0\n', 'utf-8'))
+
+while True:
+  serialPort.write(bytes(input().strip() + '\n', 'utf-8'))
+  waitForReady()
 
 
 # line = serialPort.readline().strip()

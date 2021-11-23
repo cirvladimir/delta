@@ -22,7 +22,8 @@ def capture_photo():
   return frame
 
 
-camera_rotation = cv2.Rodrigues(np.load("camera_rotation.npy"))[0]
+# camera_rotation = cv2.Rodrigues(np.load("camera_rotation.npy"))[0]
+camera_rotation = np.load("camera_rotation.npy")
 camera_translation = np.load("camera_translation.npy")
 
 
@@ -61,6 +62,8 @@ class DetectedObject(NamedTuple):
   y: float
   length: float
   time: float
+  dx: float
+  dy: float
 
 
 def get_objects():
@@ -142,7 +145,7 @@ def get_objects():
     mm_xy = find_x_y(avg_x, avg_y)
 
     objects.append(DetectedObject(
-        mm_xy[0][0], mm_xy[1][0], max_dist, image_time))
+        mm_xy[0][0], mm_xy[1][0], max_dist, image_time, 0, 0))
 
   # print(objects)
 
@@ -170,7 +173,7 @@ def get_objects():
 
 
 # mm per second
-CONVEYOR_SPEED = 40
+CONVEYOR_SPEED = 60
 
 last_objects = []
 objects_lock = threading.Lock()
@@ -181,6 +184,7 @@ def objects_updater():
   while True:
     detected_objects = get_objects()
     tmp_last_objects = list(last_objects)
+    new_detected_objects = []
     for detected_object in detected_objects:
       found_object = None
       for last_object in tmp_last_objects:
@@ -194,6 +198,13 @@ def objects_updater():
           break
       if found_object:
         tmp_last_objects.remove(found_object)
+        new_detected_objects.append(DetectedObject(detected_object.x, detected_object.y,
+                                                   detected_object.length, detected_object.time,
+                                                   dx=(
+                                                       (detected_object.x - last_object.x) / (detected_object.time - last_object.time)),
+                                                   dy=((detected_object.y - last_object.y) / (detected_object.time - last_object.time))))
+      else:
+        new_detected_objects.append(detected_object)
 
     tmp_last_objects = [
         last_object for last_object in tmp_last_objects if last_object.y < 300]
@@ -234,7 +245,7 @@ while True:
       expected_y = last_object.y - CONVEYOR_SPEED * \
           (time.time() - last_object.time)
 
-      print((expected_x, expected_y))
+      # print((expected_x, expected_y))
 
       if expected_y < 0:
         old_objects.append(last_object)
@@ -255,7 +266,10 @@ while True:
     waitForReady()
     serialPort.write(bytes(f"Y15\n", 'utf-8'))
     waitForReady()
-    serialPort.write(bytes(f"X100\n", 'utf-8'))
+    if pickup_obj.length > 40:
+      serialPort.write(bytes(f"X50\n", 'utf-8'))
+    else:
+      serialPort.write(bytes(f"X240\n", 'utf-8'))
     waitForReady()
     serialPort.write(bytes(f"M0\n", 'utf-8'))
     waitForReady()

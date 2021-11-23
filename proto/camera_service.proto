@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+message CameraDetectionRequest {
+
+}
+
+message DetectedObject {
+  float x = 1;
+  float y = 2;
+  double time = 3;
+  float dx = 4;
+  float dy = 5;
+  float length = 6;
+}
+
+message CameraDetectionResponse { repeated DetectedObject detected_objects = 1;}
+
+service CameraDetectionService {
+  rpc Detect(CameraDetectionRequest) returns (CameraDetectionResponse) {}
+}

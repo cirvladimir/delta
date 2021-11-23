@@ -1,4 +1,7 @@
 #include "geometry.h"
+// #include <cmath>
+// #include <iostream>
+// using std::isnan;
 
 float getLeftTargetPosition(float x, float y) {
   float pivot_y = (93.0 + 10.0) - (93.0 - 44.263);
@@ -17,3 +20,26 @@ float getRightTargetPosition(float x, float y) {
   float target_x = pivot_x + 22.0 + 40.573 - 1.0;
   return target_x;
 }
+
+bool positionLegal(float x, float y) {
+  float left_mm_position = getLeftTargetPosition(x, y);
+  float right_mm_position = getRightTargetPosition(x, y);
+
+  if (isnan(left_mm_position) || isnan(right_mm_position) ||
+      (left_mm_position < 0) || (left_mm_position > 355 - 95) ||
+      (right_mm_position < 95) || (right_mm_position > 355) ||
+      (right_mm_position - left_mm_position > 154) ||
+      (right_mm_position - left_mm_position < 94)) {
+    return false;
+  }
+  return true;
+}
+
+// int main() {
+//   float x = 1000.0;
+//   while (!positionLegal(x, 15.0)) {
+//     x -= 1.0;
+//   }
+//   std::cout << x << std::endl;
+//   return 0;
+// }
