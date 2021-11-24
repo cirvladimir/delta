@@ -77,6 +77,34 @@ cv::Mat ReadNpy(const std::string &file) {
 
 constexpr float MIN_TRACKING_Y = 220;
 
+constexpr int POSITION_BUFFER_SIZE = 30 * 2;
+constexpr std::chrono::duration LOST_OBJECT_TRACK_TIMEOUT =
+    std::chrono::seconds(5);
+
+class DetectedObjectInternal {
+public:
+  DetectedObject GetProto() const {
+    DetectedObject proto;
+    proto.set_x(x);
+    proto.set_y(y);
+    proto.set_dx(dx);
+    proto.set_dy(dy);
+    proto.set_time(time);
+    proto.set_length(length);
+    return proto;
+  }
+  float x = 0, y = 0, dx = 0, dy = 0;
+  double time;
+  float length = 0;
+
+  float x_buffer[POSITION_BUFFER_SIZE];
+  float y_buffer[POSITION_BUFFER_SIZE];
+  double time_buffer[POSITION_BUFFER_SIZE];
+  int buffer_size = 0;
+
+  std::chrono::time_point<std::chrono::system_clock> last_seen_time;
+};
+
 class ObjectsProvider {
 public:
   ObjectsProvider(FrameProvider &frame_provider)
@@ -88,7 +116,8 @@ public:
         camera_translation_(
             ReadNpy("/home/user/delta/python/camera_translation.npy")),
         camera_matrix_inv_(camera_matrix_.inv()),
-        camera_rotation_inv_(camera_rotation_.inv()) {}
+        camera_rotation_inv_(camera_rotation_.inv()),
+        last_log_(std::chrono::system_clock::now()) {}
 
   cv::Point2d FindXY(double u, double v) {
     double z = 0;
@@ -106,21 +135,29 @@ public:
 
   std::vector<DetectedObject> GetDetectedObjects() {
     std::lock_guard<std::mutex> guard(detected_objects_mutex_);
-    return std::vector<DetectedObject>(detected_objects_);
+    std::vector<DetectedObject> objects(detected_objects_.size());
+    std::transform(
+        detected_objects_.begin(), detected_objects_.end(), objects.begin(),
+        [](const DetectedObjectInternal &detected_object) -> DetectedObject {
+          return detected_object.GetProto();
+        });
+    return objects;
   }
 
-  float Distance(const DetectedObject &o1, const DetectedObject &o2) {
-    return std::sqrt((o1.x() - o2.x()) * (o1.x() - o2.x()) +
-                     (o1.y() - o2.y()) * (o1.y() - o2.y()));
+  float Distance(const DetectedObjectInternal &o1,
+                 const DetectedObjectInternal &o2) {
+    return std::sqrt((o1.x - o2.x) * (o1.x - o2.x) +
+                     (o1.y - o2.y) * (o1.y - o2.y));
   }
 
   void Run() {
     while (true) {
       // std::this_thread::sleep_for(std::chrono::milliseconds(100));
       auto distorted_image = frame_provider_.GetImage();
+      auto now_time_point = std::chrono::system_clock::now();
       double time =
           ((double)std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
+               now_time_point.time_since_epoch())
                .count()) /
           1000.0;
       cv::Mat image;
@@ -144,8 +181,8 @@ public:
       // cv::imwrite("c.png", binary_image);
       // cv::imwrite("d.png", max_image);
 
-      std::vector<DetectedObject> objects;
-      std::vector<DetectedObject> old_objects(detected_objects_);
+      std::vector<DetectedObjectInternal> objects;
+      std::vector<DetectedObjectInternal> old_objects(detected_objects_);
 
       for (const auto &contour : contours) {
         cv::Point2f center;
@@ -157,31 +194,40 @@ public:
           auto edge_pt =
               FindXY(center.x + crop_rect.x + radius, center.y + crop_rect.y);
           if (center_pt.y > MIN_TRACKING_Y) {
-            DetectedObject object;
-            object.set_x(center_pt.x);
-            object.set_y(center_pt.y);
-            object.set_length(2 *
-                              std::sqrt(std::pow(center_pt.x - edge_pt.x, 2) +
-                                        std::pow(center_pt.y - edge_pt.y, 2)));
-            object.set_time(time);
-
-            bool found = false;
+            DetectedObjectInternal object;
+            object.x = center_pt.x;
+            object.y = center_pt.y;
+            object.length = 2 * std::sqrt(std::pow(center_pt.x - edge_pt.x, 2) +
+                                          std::pow(center_pt.y - edge_pt.y, 2));
+            object.time = time;
+            object.last_seen_time = now_time_point;
 
             for (int i = 0; i < old_objects.size(); i++) {
               if (Distance(old_objects[i], object) < 10) {
-                float dx = (object.x() - old_objects[i].x()) /
-                           (object.time() - old_objects[i].time());
-                float dy = (object.y() - old_objects[i].y()) /
-                           (object.time() - old_objects[i].time());
-                object.set_dx(old_objects[i].dx() * 0.9 + dx * 0.1);
-                object.set_dy(old_objects[i].dy() * 0.9 + dy * 0.1);
+                object.x_buffer[0] = old_objects[i].x;
+                object.y_buffer[0] = old_objects[i].y;
+                object.time_buffer[0] = old_objects[i].time;
+
+                for (int j = 0; j < std::min(old_objects[i].buffer_size,
+                                             POSITION_BUFFER_SIZE - 1);
+                     j++) {
+                  object.x_buffer[j + 1] = old_objects[i].x_buffer[j];
+                  object.y_buffer[j + 1] = old_objects[i].y_buffer[j];
+                  object.time_buffer[j + 1] = old_objects[i].time_buffer[j];
+                }
+                object.buffer_size = std::min(1 + old_objects[i].buffer_size,
+                                              POSITION_BUFFER_SIZE);
+
+                object.dx =
+                    (object.x - object.x_buffer[object.buffer_size - 1]) /
+                    (object.time - object.time_buffer[object.buffer_size - 1]);
+                object.dy =
+                    (object.y - object.y_buffer[object.buffer_size - 1]) /
+                    (object.time - object.time_buffer[object.buffer_size - 1]);
                 old_objects.erase(old_objects.begin() + i);
-                found = true;
                 break;
               }
             }
-
-            // std::cout << found << std::endl;
 
             objects.push_back(object);
           }
@@ -189,18 +235,25 @@ public:
       }
 
       for (auto old_object : old_objects) {
-        old_object.set_x(old_object.x() +
-                         old_object.dx() * (time - old_object.time()));
-        old_object.set_y(old_object.y() +
-                         old_object.dy() * (time - old_object.time()));
-        old_object.set_time(time);
-        objects.push_back(old_object);
+        if (now_time_point - old_object.last_seen_time <
+            LOST_OBJECT_TRACK_TIMEOUT) {
+          old_object.x =
+              old_object.x + old_object.dx * (time - old_object.time);
+          old_object.y =
+              old_object.y + old_object.dy * (time - old_object.time);
+          old_object.time = time;
+          objects.push_back(old_object);
+        }
       }
 
-      // std::cout << "-------------------------------\n";
-      // for (const auto &object : objects) {
-      //   std::cout << object.DebugString() << std::endl;
-      // }
+      auto now = std::chrono::system_clock::now();
+      if (now - last_log_ > std::chrono::milliseconds(300)) {
+        last_log_ = now;
+        std::cout << "-------------------------------\n";
+        for (const auto &object : objects) {
+          std::cout << object.GetProto().DebugString() << std::endl;
+        }
+      }
 
       std::lock_guard<std::mutex> guard(detected_objects_mutex_);
       detected_objects_ = objects;
@@ -219,7 +272,8 @@ private:
   cv::Mat camera_rotation_inv_;
 
   std::mutex detected_objects_mutex_;
-  std::vector<DetectedObject> detected_objects_;
+  std::vector<DetectedObjectInternal> detected_objects_;
+  std::chrono::time_point<std::chrono::system_clock> last_log_;
 };
 
 class CameraDetectionServiceImpl final
